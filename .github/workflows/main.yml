@@ -1,0 +1,56 @@
+# ثبت مكتبة PySocks (لو مش موجودة)
+!pip install -q PySocks
+
+import requests
+import socket
+import socks
+import concurrent.futures
+
+# ⛓️ مصدر مباشر من GitHub
+url = "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt"
+
+# 🧾 نسحب البروكسيات
+print("🔄 جاري تحميل البروكسيات من GitHub...")
+proxies = []
+
+try:
+    r = requests.get(url, timeout=10)
+    if r.status_code == 200:
+        lines = r.text.strip().split('\n')
+        proxies = [line.strip() for line in lines if ':' in line]
+        print(f"✅ تم تحميل {len(proxies)} بروكسي من GitHub.")
+    else:
+        print("❌ فشل التحميل: كود الاستجابة", r.status_code)
+except Exception as e:
+    print("❌ فشل الاتصال:", e)
+
+# 🧠 دالة فحص البروكسي
+def check_proxy(proxy):
+    ip, port = proxy.split(":")
+    try:
+        socks.setdefaultproxy(socks.SOCKS5, ip, int(port), True)
+        socket.socket = socks.socksocket
+        sock = socket.socket()
+        sock.settimeout(5)
+        sock.connect(("httpbin.org", 80))
+        sock.close()
+        print(f"✅ شغّال: {proxy}")
+        return proxy
+    except:
+        return None
+
+# ⚙️ تنفيذ الفحص
+print(f"\n🔍 جاري فحص {len(proxies)} بروكسي...\n")
+working = []
+with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+    results = executor.map(check_proxy, proxies)
+    for result in results:
+        if result:
+            working.append(result)
+
+# 💾 حفظ البروكسيات الشغالة
+with open("working_socks5.txt", "w") as f:
+    f.write("\n".join(working))
+
+print(f"\n🎯 عدد البروكسيات الشغالة: {len(working)}")
+print("📁 تم حفظهم في ملف: working_socks5.txt")
